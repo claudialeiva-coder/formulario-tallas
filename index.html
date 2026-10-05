@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Registro de tallas de ropa de trabajo · Citolab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Azul del logo de Citolab como color principal y un rosa eosina
+     (el de la tinción H&E) como acento para lo opcional. */
+  :root {
+    --hema: #1e4991;
+    --hema-hover: #163a75;
+    --hema-suave: #e8eef7;
+    --eosina: #c8527a;
+    --eosina-suave: #fbeaf0;
+    --eosina-borde: #e9b6c8;
+    --fondo: #fafbfd;
+    --superficie: #ffffff;
+    --texto: #1f1c2e;
+    --texto-suave: #5e5a70;
+    --borde: #d9d6e3;
+    --error: #a4163f;
+    --error-fondo: #fdecef;
+    --ok: #1f6b4a;
+    --ok-fondo: #e8f5ee;
+    --radio: 10px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: 'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .pagina { max-width: 600px; margin: 0 auto; padding: 28px 18px 64px; }
+
+  header { margin-bottom: 24px; }
+  .logo { display: block; width: 190px; max-width: 60%; height: auto; margin: 0 0 18px -4px; }
+  .marca { font-weight: 600; color: var(--texto-suave); font-size: 15px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 6px 0 8px; font-weight: 700; color: var(--texto); }
+  .intro { color: var(--texto-suave); margin: 0; max-width: 52ch; }
+
+  .periodo {
+    margin-top: 16px;
+    padding: 10px 14px;
+    background: var(--eosina-suave);
+    border-left: 4px solid var(--eosina);
+    border-radius: 0 var(--radio) var(--radio) 0;
+    font-size: 15px;
+  }
+
+  fieldset { border: 0; padding: 0; margin: 0 0 28px; }
+  legend { font-size: 18px; font-weight: 700; padding: 0; margin-bottom: 12px; }
+
+  .campo { margin-bottom: 16px; }
+  label, .etiqueta { display: block; font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+  .ayuda { font-weight: 400; color: var(--texto-suave); font-size: 14px; }
+
+  input, select {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 12px;
+    font: inherit;
+    color: var(--texto);
+    background: var(--superficie);
+    border: 1.5px solid var(--borde);
+    border-radius: var(--radio);
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%231e4991' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 40px;
+  }
+  input:focus-visible, select:focus-visible, button:focus-visible {
+    outline: 3px solid var(--eosina);
+    outline-offset: 2px;
+  }
+  .doble { display: grid; grid-template-columns: 1fr; gap: 0 14px; }
+  @media (min-width: 520px) { .doble { grid-template-columns: 1fr 1fr; } }
+
+  /* Prendas: el borde izquierdo codifica si es obligatoria (sólido) u opcional (punteado) */
+  .prenda {
+    background: var(--superficie);
+    border: 1.5px solid var(--borde);
+    border-left: 5px solid var(--hema);
+    border-radius: var(--radio);
+    padding: 14px 16px 4px;
+    margin-bottom: 14px;
+  }
+  .prenda.opcional { border-left: 5px dashed var(--eosina); }
+  .prenda-cabecera { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .prenda-nombre { font-weight: 700; font-size: 17px; }
+  .prenda-estado { font-size: 14px; color: var(--hema); font-weight: 600; }
+  .prenda.opcional .prenda-estado { color: var(--eosina); }
+  .vacio { color: var(--texto-suave); margin: 0; padding: 14px 16px; background: var(--hema-suave); border-radius: var(--radio); }
+
+  .errores {
+    background: var(--error-fondo);
+    border: 1.5px solid var(--error);
+    color: var(--error);
+    border-radius: var(--radio);
+    padding: 12px 16px;
+    margin-bottom: 18px;
+    font-weight: 500;
+  }
+  .errores ul { margin: 6px 0 0; padding-left: 20px; }
+  .errores p { margin: 0; }
+
+  button {
+    font: inherit;
+    font-weight: 700;
+    min-height: 50px;
+    padding: 12px 22px;
+    border-radius: var(--radio);
+    border: 2px solid var(--hema);
+    cursor: pointer;
+  }
+  .primario { background: var(--hema); color: #fff; width: 100%; }
+  .primario:hover { background: var(--hema-hover); border-color: var(--hema-hover); }
+  .secundario { background: var(--superficie); color: var(--hema); }
+  .secundario:hover { background: var(--hema-suave); }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  .enlace {
+    background: none; border: 0; min-height: 44px; padding: 8px 0; margin: 0 0 12px;
+    color: var(--hema); font-weight: 600; text-decoration: underline; text-underline-offset: 3px;
+  }
+  .enlace:hover { color: var(--hema-hover); }
+
+  /* Revisión previa al envío */
+  .revision {
+    background: var(--superficie);
+    border: 1.5px solid var(--hema);
+    border-radius: var(--radio);
+    padding: 20px 18px;
+  }
+  .revision h2 { margin: 0 0 6px; font-size: 20px; }
+  .revision p { margin: 0 0 14px; color: var(--texto-suave); }
+  .resumen { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 15px; }
+  .resumen th, .resumen td { text-align: left; padding: 9px 4px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+  .resumen th { font-weight: 500; color: var(--texto-suave); width: 38%; }
+  .resumen td { font-weight: 600; }
+  .acciones { display: grid; gap: 10px; }
+  @media (min-width: 520px) { .acciones { grid-template-columns: 1fr 1.4fr; } }
+
+  .mensaje { padding: 20px 18px; border-radius: var(--radio); }
+  .mensaje h2 { margin: 0 0 6px; font-size: 22px; }
+  .mensaje p { margin: 0 0 8px; }
+  .mensaje.ok { background: var(--ok-fondo); border: 1.5px solid var(--ok); }
+  .mensaje.ok h2 { color: var(--ok); }
+  .mensaje.aviso { background: var(--hema-suave); border: 1.5px solid var(--hema); }
+  .mensaje.aviso h2 { color: var(--hema); }
+  .mensaje.fallo { background: var(--error-fondo); border: 1.5px solid var(--error); }
+  .mensaje.fallo h2 { color: var(--error); }
+
+  .cargando { color: var(--texto-suave); padding: 24px 0; }
+  [hidden] { display: none !important; }
+  @media (prefers-reduced-motion: no-preference) {
+    input, select, button { transition: border-color .15s ease, background-color .15s ease; }
+  }
+</style>
+</head>
+<body>
+<div class="pagina">
+  <header>
+    <img class="logo" src="logo.png" alt="Citolab" width="700" height="233">
+    <div class="marca">Recursos Humanos</div>
+    <h1>Registro de tallas de ropa de trabajo</h1>
+    <p class="intro">Completa el formulario una sola vez. Al terminar te llegará un correo de respaldo con las tallas que elegiste.</p>
+    <div class="periodo" id="periodo" hidden></div>
+  </header>
+
+  <main>
+    <p class="cargando" id="cargando">Cargando formulario…</p>
+    <div id="estado" hidden></div>
+
+    <form id="formulario" novalidate hidden>
+      <div class="errores" id="errores" role="alert" tabindex="-1" hidden></div>
+
+      <fieldset id="bloqueRut">
+        <legend>Tu RUT</legend>
+        <div class="campo">
+          <label for="rut">RUT <span class="ayuda">(con él cargamos tu nombre y tu área)</span></label>
+          <input id="rut" type="text" inputmode="text" autocomplete="off" maxlength="12" placeholder="12.345.678-5">
+        </div>
+        <button type="submit" class="primario" id="btnBuscar">Continuar</button>
+      </fieldset>
+
+      <div id="bloqueTallas" hidden>
+        <fieldset>
+          <legend>Tus datos</legend>
+          <table class="resumen" id="identidad"></table>
+          <button type="button" class="enlace" id="btnOtroRut">No soy yo, cambiar RUT</button>
+          <div class="campo">
+            <label for="correo">Correo electrónico <span class="ayuda">(aquí te enviamos el respaldo)</span></label>
+            <input id="correo" type="email" inputmode="email" autocomplete="email" maxlength="120">
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Tus tallas</legend>
+          <div id="prendas"></div>
+        </fieldset>
+
+        <button type="submit" class="primario" id="btnRevisar">Revisar mis tallas</button>
+      </div>
+    </form>
+
+    <section class="revision" id="revision" hidden aria-live="polite">
+      <h2>Revisa antes de enviar</h2>
+      <p>Solo puedes enviar el formulario una vez. Si algo está mal, vuelve y corrígelo ahora.</p>
+      <table class="resumen" id="resumen"></table>
+      <div class="acciones">
+        <button type="button" class="secundario" id="btnVolver">Volver a corregir</button>
+        <button type="button" class="primario" id="btnEnviar">Enviar mis tallas</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   CONFIGURACIÓN: pega aquí la URL de la implementación web de
+   Apps Script (termina en /exec).
+   ============================================================ */
+const API_URL = 'https://script.google.com/macros/s/AKfycbyrJU9rDwLh2ybj60Lt58Lxcp-rz3QdDSDowE0eb7Xe6nNDYqZ9_LLS75m-ucOWseWuSQ/exec';
+
+const ORDEN = ['polera', 'pantalon', 'delantal', 'polar'];
+const NOMBRE_PRENDA = { polera: 'Polera', pantalon: 'Pantalón', delantal: 'Delantal', polar: 'Polar' };
+
+let CFG = null;
+const $ = (id) => document.getElementById(id);
+
+/* ---------- RUT ---------- */
+function limpiarRut(v) { return String(v).replace(/[^0-9kK]/g, '').toUpperCase(); }
+
+function formatearRut(v) {
+  const c = limpiarRut(v);
+  if (c.length < 2) return c;
+  const cuerpo = c.slice(0, -1);
+  const dv = c.slice(-1);
+  return cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '-' + dv;
+}
+
+function rutValido(v) {
+  const c = limpiarRut(v);
+  if (c.length < 8 || c.length > 9) return false;
+  const cuerpo = c.slice(0, -1);
+  const dv = c.slice(-1);
+  if (!/^\d+$/.test(cuerpo)) return false;
+  let suma = 0, mult = 2;
+  for (let i = cuerpo.length - 1; i >= 0; i--) {
+    suma += parseInt(cuerpo[i], 10) * mult;
+    mult = mult === 7 ? 2 : mult + 1;
+  }
+  const r = 11 - (suma % 11);
+  const esperado = r === 11 ? '0' : r === 10 ? 'K' : String(r);
+  return esperado === dv;
+}
+
+/* ---------- Carga inicial ---------- */
+let PERSONA = null; // { rut, nombres, apellidos, area, prendas }
+
+async function iniciar() {
+  try {
+    const resp = await fetch(API_URL + '?t=' + Date.now());
+    CFG = await resp.json();
+  } catch (e) {
+    $('cargando').hidden = true;
+    mostrarEstado('fallo', 'No pudimos cargar el formulario', 'Revisa tu conexión y recarga la página. Si el problema sigue, avisa a RRHH.');
+    return;
+  }
+  $('cargando').hidden = true;
+
+  if (CFG.estado === 'antes') {
+    mostrarEstado('aviso', 'Aún no se abre el registro', 'Podrás completarlo desde el ' + CFG.apertura + ' hasta el ' + CFG.cierre + '.');
+    return;
+  }
+  if (CFG.estado === 'despues') {
+    mostrarEstado('aviso', 'El registro ya cerró', 'El período terminó el ' + CFG.cierre + '. Si no alcanzaste a responder, escribe a RRHH.');
+    return;
+  }
+
+  $('periodo').hidden = false;
+  $('periodo').textContent = 'Puedes responder hasta el ' + CFG.cierre + '.';
+  $('formulario').hidden = false;
+  $('rut').focus();
+}
+
+function mostrarEstado(tipo, titulo, texto) {
+  const el = $('estado');
+  el.hidden = false;
+  el.className = 'mensaje ' + tipo;
+  el.innerHTML = '<h2></h2><p></p>';
+  el.querySelector('h2').textContent = titulo;
+  el.querySelector('p').textContent = texto;
+}
+
+async function llamar(cuerpo) {
+  const resp = await fetch(API_URL, { method: 'POST', body: JSON.stringify(cuerpo) });
+  return resp.json();
+}
+
+/* ---------- Paso 1: buscar por RUT ---------- */
+async function buscar() {
+  const rut = $('rut').value.trim();
+  if (!rutValido(rut)) {
+    mostrarErrores(['Revisa tu RUT: el número o el dígito verificador no coincide.']);
+    return;
+  }
+  mostrarErrores([]);
+  const btn = $('btnBuscar');
+  btn.disabled = true; btn.textContent = 'Buscando…';
+  try {
+    const r = await llamar({ accion: 'buscar', rut: rut });
+    if (r.ok) {
+      PERSONA = Object.assign({}, r.persona, { prendas: r.prendas });
+      mostrarTallas();
+    } else if (r.codigo === 'duplicado') {
+      $('periodo').hidden = true;
+      $('formulario').hidden = true;
+      mostrarEstado('aviso', 'Ya habías registrado tus tallas', r.mensaje);
+    } else if (r.codigo === 'cerrado') {
+      $('formulario').hidden = true;
+      mostrarEstado('aviso', 'El registro está cerrado', 'El período de registro terminó. Escribe a RRHH si necesitas ayuda.');
+    } else {
+      mostrarErrores([r.mensaje || 'No pudimos buscar tu RUT. Inténtalo de nuevo.']);
+    }
+  } catch (e) {
+    mostrarErrores(['No pudimos conectar. Revisa tu conexión e inténtalo de nuevo.']);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Continuar';
+  }
+}
+
+function mostrarTallas() {
+  const t = $('identidad');
+  t.innerHTML = '';
+  t.appendChild(filaResumen('Nombre', PERSONA.nombres + ' ' + PERSONA.apellidos));
+  t.appendChild(filaResumen('RUT', formatearRut(PERSONA.rut)));
+  t.appendChild(filaResumen('Área', PERSONA.area));
+  renderPrendas();
+  $('bloqueRut').hidden = true;
+  $('bloqueTallas').hidden = false;
+  $('correo').focus({ preventScroll: true });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cambiarRut() {
+  PERSONA = null;
+  $('bloqueTallas').hidden = true;
+  $('bloqueRut').hidden = false;
+  $('correo').value = '';
+  mostrarErrores([]);
+  $('rut').select();
+}
+
+/* ---------- Prendas según el área ---------- */
+function opcionesHTML(lista, placeholder) {
+  return '<option value="">' + placeholder + '</option>' +
+    lista.map((x) => '<option value="' + x + '">' + x + '</option>').join('');
+}
+
+function renderPrendas() {
+  const cont = $('prendas');
+  cont.innerHTML = '';
+  ORDEN.forEach((p) => {
+    const op = PERSONA.prendas[p];
+    if (!op) return;
+    const obligatoria = op.regla === 'obl';
+    const div = document.createElement('div');
+    div.className = 'prenda' + (obligatoria ? '' : ' opcional');
+    div.dataset.prenda = p;
+
+    let campos = '';
+    if (op.cortes) {
+      const unico = op.cortes.length === 1;
+      campos += '<div class="campo"><label for="corte-' + p + '">Corte' +
+        (unico ? ' <span class="ayuda">(único disponible)</span>' : '') + '</label>' +
+        '<select id="corte-' + p + '"' + (unico ? ' disabled' : '') + '>' +
+        (unico ? '<option value="' + op.cortes[0] + '" selected>' + op.cortes[0] + '</option>'
+               : opcionesHTML(op.cortes, 'Selecciona')) +
+        '</select></div>';
+    }
+    campos += '<div class="campo"><label for="talla-' + p + '">Talla</label>' +
+      '<select id="talla-' + p + '">' + opcionesHTML(op.tallas, 'Selecciona') + '</select></div>';
+
+    div.innerHTML =
+      '<div class="prenda-cabecera"><span class="prenda-nombre">' + NOMBRE_PRENDA[p] + '</span>' +
+      '<span class="prenda-estado">' + (obligatoria ? 'Obligatorio' : 'Opcional') + '</span></div>' +
+      '<div class="' + (op.cortes ? 'doble' : '') + '">' + campos + '</div>';
+    cont.appendChild(div);
+  });
+}
+
+/* ---------- Lectura y validación ---------- */
+function leerDatos() {
+  const d = { accion: 'registrar', rut: PERSONA.rut, correo: $('correo').value.trim() };
+  ORDEN.forEach((p) => {
+    if (!PERSONA.prendas[p]) return;
+    const c = $('corte-' + p);
+    d[p] = { corte: c ? c.value : '', talla: $('talla-' + p).value };
+  });
+  return d;
+}
+
+function validar(d) {
+  const e = [];
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.correo)) e.push('Escribe un correo válido para recibir el respaldo.');
+  ORDEN.forEach((p) => {
+    const op = PERSONA.prendas[p];
+    if (!op) return;
+    const v = d[p];
+    const nombre = NOMBRE_PRENDA[p].toLowerCase();
+    if (op.regla === 'opt' && !v.corte && !v.talla) return;
+    if (op.cortes && !v.corte) e.push('Elige el corte de ' + nombre + '.');
+    if (!v.talla) e.push('Elige la talla de ' + nombre + '.');
+  });
+  return e;
+}
+
+function mostrarErrores(lista) {
+  const box = $('errores');
+  if (!lista.length) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  box.innerHTML = '<p>Falta corregir esto para continuar:</p><ul></ul>';
+  const ul = box.querySelector('ul');
+  lista.forEach((t) => { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  box.focus({ preventScroll: true });
+}
+
+/* ---------- Revisión y envío ---------- */
+function filaResumen(etiqueta, valor) {
+  const tr = document.createElement('tr');
+  const th = document.createElement('th'); th.textContent = etiqueta;
+  const td = document.createElement('td'); td.textContent = valor;
+  tr.appendChild(th); tr.appendChild(td);
+  return tr;
+}
+
+function mostrarRevision(d) {
+  const t = $('resumen');
+  t.innerHTML = '';
+  t.appendChild(filaResumen('Nombre', PERSONA.nombres + ' ' + PERSONA.apellidos));
+  t.appendChild(filaResumen('RUT', formatearRut(PERSONA.rut)));
+  t.appendChild(filaResumen('Área', PERSONA.area));
+  t.appendChild(filaResumen('Correo', d.correo));
+  ORDEN.forEach((p) => {
+    if (!PERSONA.prendas[p]) return;
+    const v = d[p];
+    const texto = v.talla ? ((v.corte ? v.corte + ', ' : '') + 'talla ' + v.talla) : 'No la solicito';
+    t.appendChild(filaResumen(NOMBRE_PRENDA[p], texto));
+  });
+  $('formulario').hidden = true;
+  $('revision').hidden = false;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function enviar() {
+  const d = leerDatos();
+  const btn = $('btnEnviar');
+  btn.disabled = true; $('btnVolver').disabled = true;
+  btn.textContent = 'Enviando…';
+  try {
+    const r = await llamar(d);
+    $('revision').hidden = true;
+    $('periodo').hidden = true;
+
+    if (r.ok) {
+      const extra = r.correoEnviado
+        ? 'Te enviamos el respaldo a ' + d.correo + '. Si no lo ves, revisa la carpeta de spam.'
+        : 'Tus tallas quedaron registradas, pero no pudimos enviar el correo de respaldo. Guarda una captura de esta pantalla y avisa a RRHH.';
+      mostrarEstado('ok', 'Tus tallas quedaron registradas', extra);
+    } else if (r.codigo === 'duplicado') {
+      mostrarEstado('aviso', 'Ya habías registrado tus tallas', r.mensaje);
+    } else if (r.codigo === 'cerrado') {
+      mostrarEstado('aviso', 'El registro está cerrado', 'El período de registro terminó. Escribe a RRHH si necesitas ayuda.');
+    } else {
+      volverAlFormulario();
+      mostrarErrores([r.mensaje || 'No pudimos guardar tu registro. Revisa los datos e inténtalo de nuevo.']);
+    }
+  } catch (e) {
+    volverAlFormulario();
+    mostrarErrores(['No pudimos enviar el formulario. Revisa tu conexión e inténtalo de nuevo. Si ya habías enviado antes, es posible que tu registro sí haya quedado guardado: pregunta a RRHH.']);
+  } finally {
+    btn.disabled = false; $('btnVolver').disabled = false;
+    btn.textContent = 'Enviar mis tallas';
+  }
+}
+
+function volverAlFormulario() {
+  $('revision').hidden = true;
+  $('formulario').hidden = false;
+  $('periodo').hidden = false;
+}
+
+/* ---------- Eventos ---------- */
+$('rut').addEventListener('input', (e) => { e.target.value = formatearRut(e.target.value); });
+
+$('formulario').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  if (!PERSONA) { buscar(); return; }
+  const d = leerDatos();
+  const errores = validar(d);
+  mostrarErrores(errores);
+  if (!errores.length) mostrarRevision(d);
+});
+
+$('btnOtroRut').addEventListener('click', cambiarRut);
+$('btnVolver').addEventListener('click', () => {
+  $('revision').hidden = true;
+  $('formulario').hidden = false;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+$('btnEnviar').addEventListener('click', enviar);
+
+iniciar();
+</script>
+</body>
+</html>

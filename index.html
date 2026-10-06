@@ -101,6 +101,29 @@
   .prenda-nombre { font-weight: 700; font-size: 17px; }
   .prenda-estado { font-size: 14px; color: var(--hema); font-weight: 600; }
   .prenda.opcional .prenda-estado { color: var(--eosina); }
+  .uniforme {
+    background: var(--hema-suave);
+    border-left: 5px solid var(--hema);
+    border-radius: 0 var(--radio) var(--radio) 0;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+  }
+  .uniforme-titulo { font-weight: 700; margin-bottom: 4px; }
+  .uniforme dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; font-size: 15px; }
+  .uniforme dt { color: var(--texto-suave); }
+  .uniforme dd { margin: 0; font-weight: 600; }
+  .modelo { margin: 0 0 12px; font-size: 14px; color: var(--texto-suave); }
+  .modelo strong { color: var(--texto); font-weight: 600; }
+  .modelo span { display: block; }
+  .mangas { margin: 4px 0 14px; }
+  .mangas-titulo { margin: 0 0 6px; font-weight: 600; font-size: 15px; }
+  .mangas-modelos { margin: 0 0 10px; font-size: 14px; color: var(--texto-suave); }
+  .mangas-modelos span { display: block; }
+  .mangas-modelos strong { color: var(--texto); font-weight: 600; }
+  .polera-fila { padding: 10px 0 2px; border-top: 1px solid var(--borde); }
+  .polera-fila .doble { gap: 0 12px; }
+  .polera-fila .campo { margin-bottom: 10px; }
+  .polera-nombre { font-weight: 700; margin-bottom: 6px; }
   .vacio { color: var(--texto-suave); margin: 0; padding: 14px 16px; background: var(--hema-suave); border-radius: var(--radio); }
 
   .errores {
@@ -207,6 +230,7 @@
 
         <fieldset>
           <legend>Tus tallas</legend>
+          <div class="uniforme" id="uniforme" hidden></div>
           <div id="prendas"></div>
         </fieldset>
 
@@ -322,7 +346,7 @@ async function buscar() {
   try {
     const r = await llamar({ accion: 'buscar', rut: rut });
     if (r.ok) {
-      PERSONA = Object.assign({}, r.persona, { prendas: r.prendas });
+      PERSONA = Object.assign({}, r.persona, { prendas: r.prendas, uniforme: r.uniforme });
       mostrarTallas();
     } else if (r.codigo === 'duplicado') {
       $('periodo').hidden = true;
@@ -347,6 +371,7 @@ function mostrarTallas() {
   t.appendChild(filaResumen('Nombre', PERSONA.nombres + ' ' + PERSONA.apellidos));
   t.appendChild(filaResumen('RUT', formatearRut(PERSONA.rut)));
   t.appendChild(filaResumen('Área', PERSONA.area));
+  renderUniforme();
   renderPrendas();
   $('bloqueRut').hidden = true;
   $('bloqueTallas').hidden = false;
@@ -361,6 +386,127 @@ function cambiarRut() {
   $('correo').value = '';
   mostrarErrores([]);
   $('rut').select();
+}
+
+/* ---------- Uniforme y modelos ---------- */
+function renderUniforme() {
+  const box = $('uniforme');
+  const u = PERSONA.uniforme;
+  box.innerHTML = '';
+  if (!u) { box.hidden = true; return; }
+  const filas = [['Uniforme', u.tipo], ['Color', u.color], ['Marca', u.marca]].filter((f) => f[1]);
+  if (!filas.length) { box.hidden = true; return; }
+  const titulo = document.createElement('div');
+  titulo.className = 'uniforme-titulo';
+  titulo.textContent = 'Tu uniforme';
+  const dl = document.createElement('dl');
+  filas.forEach((f) => {
+    const dt = document.createElement('dt'); dt.textContent = f[0];
+    const dd = document.createElement('dd'); dd.textContent = f[1];
+    dl.appendChild(dt); dl.appendChild(dd);
+  });
+  box.appendChild(titulo); box.appendChild(dl);
+  box.hidden = false;
+}
+
+// Muestra el modelo de la prenda según el corte elegido (o el único modelo si no hay corte).
+// En la polera piqué (modelos de manga corta y larga) muestra en cambio las cantidades por manga.
+function actualizarModelo(p) {
+  const cont = $('modelo-' + p);
+  if (!cont) return;
+  const op = PERSONA.prendas[p];
+  let texto = '';
+  let mangas = null;
+  if (op.cortes) {
+    const corte = $('corte-' + p).value;
+    texto = (op.modelos && corte && op.modelos[corte]) || '';
+    mangas = (p === 'polera' && op.mangas && corte && op.mangas[corte]) || null;
+  } else {
+    texto = op.modeloUnico || '';
+  }
+  if (p === 'polera') {
+    renderMangas(mangas, op.cantidadFija, op.tallas);
+    // Con polera piqué la talla se elige por manga: se oculta la talla única.
+    const tallaUnica = $('talla-polera').closest('.campo');
+    tallaUnica.hidden = !!mangas;
+    if (mangas) $('talla-polera').value = '';
+  }
+
+  cont.innerHTML = '';
+  if (!texto || mangas) { cont.hidden = true; return; }
+  const etiqueta = document.createElement('strong');
+  etiqueta.textContent = 'Modelo';
+  cont.appendChild(etiqueta);
+  texto.split(' - ').forEach((linea) => {
+    const s = document.createElement('span'); s.textContent = linea.trim(); cont.appendChild(s);
+  });
+  cont.hidden = false;
+}
+
+/* ---------- Poleras piqué: 5 poleras, cada una con su manga y su talla ---------- */
+function renderMangas(mangas, total, tallas) {
+  const cont = $('mangas-polera');
+  if (!cont) return;
+  cont.innerHTML = '';
+  if (!mangas) { cont.hidden = true; return; }
+
+  const titulo = document.createElement('p');
+  titulo.className = 'mangas-titulo';
+  titulo.textContent = 'Tu uniforme incluye ' + total + ' poleras. Elige la manga y la talla de cada una; pueden ser distintas.';
+  cont.appendChild(titulo);
+
+  const ref = document.createElement('p');
+  ref.className = 'mangas-modelos';
+  [['Manga corta', mangas.corta], ['Manga larga', mangas.larga]].forEach(([n, m]) => {
+    const s = document.createElement('span');
+    const b = document.createElement('strong'); b.textContent = n + ': ';
+    s.appendChild(b); s.appendChild(document.createTextNode(m));
+    ref.appendChild(s);
+  });
+  cont.appendChild(ref);
+
+  for (let i = 1; i <= total; i++) {
+    const fila = document.createElement('div');
+    fila.className = 'polera-fila';
+    fila.dataset.indice = String(i);
+    fila.innerHTML =
+      '<div class="polera-nombre">Polera ' + i + '</div>' +
+      '<div class="doble">' +
+        '<div class="campo"><label for="manga-' + i + '">Manga</label>' +
+          '<select id="manga-' + i + '"><option value="">Selecciona</option>' +
+          '<option value="corta">Manga corta</option><option value="larga">Manga larga</option></select></div>' +
+        '<div class="campo"><label for="talla-pq-' + i + '">Talla</label>' +
+          '<select id="talla-pq-' + i + '">' + opcionesHTML(tallas, 'Selecciona') + '</select></div>' +
+      '</div>';
+    cont.appendChild(fila);
+    // Comodidad: al elegir la talla de una polera, las siguientes que aún no tienen talla la heredan
+    // (se puede cambiar después).
+    fila.querySelector('#talla-pq-' + i).addEventListener('change', (e) => {
+      for (let j = i + 1; j <= total; j++) {
+        const otra = $('talla-pq-' + j);
+        if (otra && !otra.value) otra.value = e.target.value;
+      }
+    });
+  }
+  cont.hidden = false;
+}
+
+function leerUnidades() {
+  const total = PERSONA.prendas.polera.cantidadFija;
+  const u = [];
+  for (let i = 1; i <= total; i++) u.push({ manga: $('manga-' + i).value, talla: $('talla-pq-' + i).value });
+  return u;
+}
+
+// Agrupa las poleras iguales: [{ manga, talla, n }], primero manga corta.
+function agruparUnidades(unidades) {
+  const g = {};
+  unidades.forEach((u) => {
+    const k = u.manga + '|' + u.talla;
+    g[k] = g[k] || { manga: u.manga, talla: u.talla, n: 0 };
+    g[k].n++;
+  });
+  return Object.values(g).sort((a, b) => (a.manga === b.manga ? 0 : a.manga === 'corta' ? -1 : 1));
 }
 
 /* ---------- Prendas según el área ---------- */
@@ -396,8 +542,13 @@ function renderPrendas() {
     div.innerHTML =
       '<div class="prenda-cabecera"><span class="prenda-nombre">' + NOMBRE_PRENDA[p] + '</span>' +
       '<span class="prenda-estado">' + (obligatoria ? 'Obligatorio' : 'Opcional') + '</span></div>' +
-      '<div class="' + (op.cortes ? 'doble' : '') + '">' + campos + '</div>';
+      '<div class="' + (op.cortes ? 'doble' : '') + '">' + campos + '</div>' +
+      '<p class="modelo" id="modelo-' + p + '" hidden></p>' +
+      (p === 'polera' ? '<div class="mangas" id="mangas-polera" hidden></div>' : '');
     cont.appendChild(div);
+    const selCorte = div.querySelector('#corte-' + p);
+    if (selCorte) selCorte.addEventListener('change', () => actualizarModelo(p));
+    actualizarModelo(p);
   });
 }
 
@@ -409,7 +560,16 @@ function leerDatos() {
     const c = $('corte-' + p);
     d[p] = { corte: c ? c.value : '', talla: $('talla-' + p).value };
   });
+  if (d.polera && mangasVisibles()) {
+    d.polera.talla = '';
+    d.polera.unidades = leerUnidades();
+  }
   return d;
+}
+
+function mangasVisibles() {
+  const m = $('mangas-polera');
+  return !!(m && !m.hidden && $('manga-1'));
 }
 
 function validar(d) {
@@ -422,8 +582,16 @@ function validar(d) {
     const nombre = NOMBRE_PRENDA[p].toLowerCase();
     if (op.regla === 'opt' && !v.corte && !v.talla) return;
     if (op.cortes && !v.corte) e.push('Elige el corte de ' + nombre + '.');
+    if (p === 'polera' && v.unidades) return; // la talla va por polera (abajo)
     if (!v.talla) e.push('Elige la talla de ' + nombre + '.');
   });
+  if (d.polera && d.polera.unidades) {
+    const faltan = [];
+    d.polera.unidades.forEach((u, i) => { if (!u.manga || !u.talla) faltan.push(i + 1); });
+    if (faltan.length) {
+      e.push('Debes pedir exactamente ' + d.polera.unidades.length + ' poleras. Completa la manga y la talla de la polera ' + faltan.join(', ') + '.');
+    }
+  }
   return e;
 }
 
@@ -457,7 +625,11 @@ function mostrarRevision(d) {
   ORDEN.forEach((p) => {
     if (!PERSONA.prendas[p]) return;
     const v = d[p];
-    const texto = v.talla ? ((v.corte ? v.corte + ', ' : '') + 'talla ' + v.talla) : 'No la solicito';
+    let texto = v.talla ? ((v.corte ? v.corte + ', ' : '') + 'talla ' + v.talla) : 'No la solicito';
+    if (p === 'polera' && v.unidades) {
+      const partes = agruparUnidades(v.unidades).map((x) => x.n + ' de manga ' + x.manga + ' (talla ' + x.talla + ')');
+      texto = v.corte + ': ' + partes.join(', ');
+    }
     t.appendChild(filaResumen(NOMBRE_PRENDA[p], texto));
   });
   $('formulario').hidden = true;

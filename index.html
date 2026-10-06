@@ -327,7 +327,7 @@ async function buscar() {
     } else if (r.codigo === 'duplicado') {
       $('periodo').hidden = true;
       $('formulario').hidden = true;
-      mostrarEstado('aviso', 'Ya habías registrado tus tallas', r.mensaje);
+      mostrarEstado('aviso', 'Solicitud duplicada', r.mensaje);
     } else if (r.codigo === 'cerrado') {
       $('formulario').hidden = true;
       mostrarEstado('aviso', 'El registro está cerrado', 'El período de registro terminó. Escribe a RRHH si necesitas ayuda.');
@@ -481,7 +481,7 @@ async function enviar() {
         : 'Tus tallas quedaron registradas, pero no pudimos enviar el correo de respaldo. Guarda una captura de esta pantalla y avisa a RRHH.';
       mostrarEstado('ok', 'Tus tallas quedaron registradas', extra);
     } else if (r.codigo === 'duplicado') {
-      mostrarEstado('aviso', 'Ya habías registrado tus tallas', r.mensaje);
+      mostrarEstado('aviso', 'Solicitud duplicada', r.mensaje);
     } else if (r.codigo === 'cerrado') {
       mostrarEstado('aviso', 'El registro está cerrado', 'El período de registro terminó. Escribe a RRHH si necesitas ayuda.');
     } else {

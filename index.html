@@ -124,6 +124,10 @@
   .polera-fila .doble { gap: 0 12px; }
   .polera-fila .campo { margin-bottom: 10px; }
   .polera-nombre { font-weight: 700; margin-bottom: 6px; }
+  .grupo-titulo { font-weight: 700; font-size: 18px; margin: 22px 0 8px; color: var(--hema); }
+  .grupo-titulo:first-child { margin-top: 0; }
+  .prenda .bloqueo { margin: 0 0 12px; font-size: 14px; color: var(--texto-suave); }
+  .prenda.bloqueada .doble { opacity: 0.45; }
   .vacio { color: var(--texto-suave); margin: 0; padding: 14px 16px; background: var(--hema-suave); border-radius: var(--radio); }
 
   .errores {
@@ -257,8 +261,14 @@
    ============================================================ */
 const API_URL = 'https://script.google.com/macros/s/AKfycbyrJU9rDwLh2ybj60Lt58Lxcp-rz3QdDSDowE0eb7Xe6nNDYqZ9_LLS75m-ucOWseWuSQ/exec';
 
-const ORDEN = ['polera', 'pantalon', 'delantal', 'polar', 'polarcorto'];
-const NOMBRE_PRENDA = { polera: 'Polera', pantalon: 'Pantalón', delantal: 'Delantal', polar: 'Polar', polarcorto: 'Polar manga corta' };
+const ORDEN = ['polera', 'pantalon', 'delantal', 'polera2', 'pantalon2', 'delantal2', 'polar', 'polarcorto'];
+const NOMBRE_PRENDA = { polera: 'Polera', pantalon: 'Pantalón', delantal: 'Delantal', polera2: 'Polera', pantalon2: 'Pantalón', delantal2: 'Delantal', polar: 'Polar manga larga', polarcorto: 'Polar manga corta' };
+
+// Nombre que se muestra de una prenda. Con dos uniformes, el servidor agrega el tipo: "Polera (Clínico)".
+function nombreDe(p) {
+  const op = typeof PERSONA !== 'undefined' && PERSONA && PERSONA.prendas && PERSONA.prendas[p];
+  return (op && op.etiqueta) || NOMBRE_PRENDA[p];
+}
 
 let CFG = null;
 const $ = (id) => document.getElementById(id);
@@ -346,7 +356,7 @@ async function buscar() {
   try {
     const r = await llamar({ accion: 'buscar', rut: rut });
     if (r.ok) {
-      PERSONA = Object.assign({}, r.persona, { prendas: r.prendas, uniforme: r.uniforme });
+      PERSONA = Object.assign({}, r.persona, { prendas: r.prendas, uniforme: r.uniforme, dosUniformes: r.dosUniformes, uniformeAdicional: r.uniformeAdicional });
       mostrarTallas();
     } else if (r.codigo === 'duplicado') {
       $('periodo').hidden = true;
@@ -389,24 +399,34 @@ function cambiarRut() {
 }
 
 /* ---------- Uniforme y modelos ---------- */
-function renderUniforme() {
-  const box = $('uniforme');
-  const u = PERSONA.uniforme;
-  box.innerHTML = '';
-  if (!u) { box.hidden = true; return; }
+// Caja con tipo, color y marca de un uniforme. Devuelve null si no hay datos.
+function crearCajaUniforme(u, titulo) {
+  if (!u) return null;
   const filas = [['Uniforme', u.tipo], ['Color', u.color], ['Marca', u.marca]].filter((f) => f[1]);
-  if (!filas.length) { box.hidden = true; return; }
-  const titulo = document.createElement('div');
-  titulo.className = 'uniforme-titulo';
-  titulo.textContent = 'Tu uniforme';
+  if (!filas.length) return null;
+  const box = document.createElement('div');
+  box.className = 'uniforme';
+  const t = document.createElement('div');
+  t.className = 'uniforme-titulo';
+  t.textContent = titulo;
   const dl = document.createElement('dl');
   filas.forEach((f) => {
     const dt = document.createElement('dt'); dt.textContent = f[0];
     const dd = document.createElement('dd'); dd.textContent = f[1];
     dl.appendChild(dt); dl.appendChild(dd);
   });
-  box.appendChild(titulo); box.appendChild(dl);
-  box.hidden = false;
+  box.appendChild(t); box.appendChild(dl);
+  return box;
+}
+
+function renderUniforme() {
+  const cont = $('uniforme');
+  cont.innerHTML = '';
+  // Con dos uniformes, cada caja se muestra junto a sus prendas (en renderPrendas).
+  const caja = PERSONA.dosUniformes ? null : crearCajaUniforme(PERSONA.uniforme, 'Tu uniforme');
+  if (!caja) { cont.hidden = true; return; }
+  while (caja.firstChild) cont.appendChild(caja.firstChild);
+  cont.hidden = false;
 }
 
 // Muestra el modelo de la prenda según el corte elegido (o el único modelo si no hay corte).
@@ -518,9 +538,20 @@ function opcionesHTML(lista, placeholder) {
 function renderPrendas() {
   const cont = $('prendas');
   cont.innerHTML = '';
+  let grupoActual = null;
   ORDEN.forEach((p) => {
     const op = PERSONA.prendas[p];
     if (!op) return;
+    if (PERSONA.dosUniformes && op.grupo !== grupoActual) {
+      grupoActual = op.grupo;
+      const titulo = document.createElement('div');
+      titulo.className = 'grupo-titulo';
+      titulo.textContent = op.grupo === 'principal' ? 'Uniforme 1' : op.grupo === 'adicional' ? 'Uniforme 2' : 'Polar (opcional, solo uno)';
+      cont.appendChild(titulo);
+      const caja = op.grupo === 'principal' ? crearCajaUniforme(PERSONA.uniforme, 'Datos del uniforme 1')
+        : op.grupo === 'adicional' ? crearCajaUniforme(PERSONA.uniformeAdicional, 'Datos del uniforme 2') : null;
+      if (caja) cont.appendChild(caja);
+    }
     const obligatoria = op.regla === 'obl';
     const div = document.createElement('div');
     div.className = 'prenda' + (obligatoria ? '' : ' opcional');
@@ -540,15 +571,46 @@ function renderPrendas() {
       '<select id="talla-' + p + '">' + opcionesHTML(op.tallas, 'Selecciona') + '</select></div>';
 
     div.innerHTML =
-      '<div class="prenda-cabecera"><span class="prenda-nombre">' + NOMBRE_PRENDA[p] + '</span>' +
+      '<div class="prenda-cabecera"><span class="prenda-nombre">' + nombreDe(p) + '</span>' +
       '<span class="prenda-estado">' + (obligatoria ? 'Obligatorio' : 'Opcional') + '</span></div>' +
       '<div class="' + (op.cortes ? 'doble' : '') + '">' + campos + '</div>' +
       '<p class="modelo" id="modelo-' + p + '" hidden></p>' +
+      (p === 'polar' || p === 'polarcorto' ? '<p class="bloqueo" id="bloqueo-' + p + '" hidden></p>' : '') +
       (p === 'polera' ? '<div class="mangas" id="mangas-polera" hidden></div>' : '');
     cont.appendChild(div);
     const selCorte = div.querySelector('#corte-' + p);
     if (selCorte) selCorte.addEventListener('change', () => actualizarModelo(p));
     actualizarModelo(p);
+  });
+  // Polar manga larga y manga corta son excluyentes: al pedir uno, el otro se deshabilita.
+  ['polar', 'polarcorto'].forEach((p) => {
+    ['corte-', 'talla-'].forEach((k) => {
+      const el = $(k + p);
+      if (el) el.addEventListener('change', sincronizarPolares);
+    });
+  });
+  sincronizarPolares();
+}
+
+function polarElegida(p) {
+  const c = $('corte-' + p), t = $('talla-' + p);
+  return !!((c && c.value) || (t && t.value));
+}
+
+function sincronizarPolares() {
+  if (!PERSONA.prendas.polar || !PERSONA.prendas.polarcorto) return;
+  const largaUsada = polarElegida('polar');
+  const cortaUsada = polarElegida('polarcorto');
+  const bloqueos = [
+    ['polarcorto', largaUsada && !cortaUsada, 'Ya elegiste el polar manga larga. Solo puedes pedir uno de los dos. Para cambiar, deja el otro en "Selecciona".'],
+    ['polar', cortaUsada && !largaUsada, 'Ya elegiste el polar manga corta. Solo puedes pedir uno de los dos. Para cambiar, deja el otro en "Selecciona".']
+  ];
+  bloqueos.forEach(([p, bloquear, aviso]) => {
+    ['corte-', 'talla-'].forEach((k) => { const el = $(k + p); if (el) el.disabled = bloquear; });
+    const card = document.querySelector('.prenda[data-prenda="' + p + '"]');
+    if (card) card.classList.toggle('bloqueada', bloquear);
+    const msg = $('bloqueo-' + p);
+    if (msg) { msg.textContent = bloquear ? aviso : ''; msg.hidden = !bloquear; }
   });
 }
 
@@ -579,12 +641,15 @@ function validar(d) {
     const op = PERSONA.prendas[p];
     if (!op) return;
     const v = d[p];
-    const nombre = NOMBRE_PRENDA[p].toLowerCase();
+    const nombre = nombreDe(p).toLowerCase();
     if (op.regla === 'opt' && !v.corte && !v.talla) return;
     if (op.cortes && !v.corte) e.push('Elige el corte de ' + nombre + '.');
     if (p === 'polera' && v.unidades) return; // la talla va por polera (abajo)
     if (!v.talla) e.push('Elige la talla de ' + nombre + '.');
   });
+  if (d.polar && d.polarcorto && (d.polar.corte || d.polar.talla) && (d.polarcorto.corte || d.polarcorto.talla)) {
+    e.push('Elige solo un polar: manga larga o manga corta.');
+  }
   if (d.polera && d.polera.unidades) {
     const faltan = [];
     d.polera.unidades.forEach((u, i) => { if (!u.manga || !u.talla) faltan.push(i + 1); });
@@ -630,7 +695,7 @@ function mostrarRevision(d) {
       const partes = agruparUnidades(v.unidades).map((x) => x.n + ' de manga ' + x.manga + ' (talla ' + x.talla + ')');
       texto = v.corte + ': ' + partes.join(', ');
     }
-    t.appendChild(filaResumen(NOMBRE_PRENDA[p], texto));
+    t.appendChild(filaResumen(nombreDe(p), texto));
   });
   $('formulario').hidden = true;
   $('revision').hidden = false;

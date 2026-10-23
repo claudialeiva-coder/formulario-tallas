@@ -262,7 +262,7 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbyrJU9rDwLh2ybj60Lt58Lxcp-rz3QdDSDowE0eb7Xe6nNDYqZ9_LLS75m-ucOWseWuSQ/exec';
 
 const ORDEN = ['polera', 'pantalon', 'delantal', 'polera2', 'pantalon2', 'delantal2', 'polar', 'polarcorto'];
-const NOMBRE_PRENDA = { polera: 'Polera', pantalon: 'Pantalón', delantal: 'Delantal', polera2: 'Polera', pantalon2: 'Pantalón', delantal2: 'Delantal', polar: 'Polar manga larga', polarcorto: 'Polar manga corta' };
+const NOMBRE_PRENDA = { polera: 'Polera', pantalon: 'Pantalón', delantal: 'Delantal', polera2: 'Polera', pantalon2: 'Pantalón', delantal2: 'Delantal', polar: 'Polar manga larga', polarcorto: 'Polar sin mangas' };
 
 // Nombre que se muestra de una prenda. Con dos uniformes, el servidor agrega el tipo: "Polera (Clínico)".
 function nombreDe(p) {
@@ -582,7 +582,7 @@ function renderPrendas() {
     if (selCorte) selCorte.addEventListener('change', () => actualizarModelo(p));
     actualizarModelo(p);
   });
-  // Polar manga larga y manga corta son excluyentes: al pedir uno, el otro se deshabilita.
+  // Polar manga larga y polar sin mangas son excluyentes: al pedir uno, el otro se deshabilita.
   ['polar', 'polarcorto'].forEach((p) => {
     ['corte-', 'talla-'].forEach((k) => {
       const el = $(k + p);
@@ -603,7 +603,7 @@ function sincronizarPolares() {
   const cortaUsada = polarElegida('polarcorto');
   const bloqueos = [
     ['polarcorto', largaUsada && !cortaUsada, 'Ya elegiste el polar manga larga. Solo puedes pedir uno de los dos. Para cambiar, deja el otro en "Selecciona".'],
-    ['polar', cortaUsada && !largaUsada, 'Ya elegiste el polar manga corta. Solo puedes pedir uno de los dos. Para cambiar, deja el otro en "Selecciona".']
+    ['polar', cortaUsada && !largaUsada, 'Ya elegiste el polar sin mangas. Solo puedes pedir uno de los dos. Para cambiar, deja el otro en "Selecciona".']
   ];
   bloqueos.forEach(([p, bloquear, aviso]) => {
     ['corte-', 'talla-'].forEach((k) => { const el = $(k + p); if (el) el.disabled = bloquear; });
@@ -648,7 +648,7 @@ function validar(d) {
     if (!v.talla) e.push('Elige la talla de ' + nombre + '.');
   });
   if (d.polar && d.polarcorto && (d.polar.corte || d.polar.talla) && (d.polarcorto.corte || d.polarcorto.talla)) {
-    e.push('Elige solo un polar: manga larga o manga corta.');
+    e.push('Elige solo un polar: manga larga o sin mangas.');
   }
   if (d.polera && d.polera.unidades) {
     const faltan = [];
